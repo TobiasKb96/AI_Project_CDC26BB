@@ -134,7 +134,7 @@ class Model:
         elif self.decoder_type == DecoderType.WordBeamSearch:
             # prepare information about language (dictionary, characters in dataset, characters forming words)
             chars = ''.join(self.char_list)
-            word_chars = open('../model/wordCharList.txt').read().splitlines()[0]
+            word_chars = open('../model/testmodel/wordCharList.txt').read().splitlines()[0]
             corpus = open('../data/corpus.txt').read()
 
             # decode using the "Words" mode of word beam search

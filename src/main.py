@@ -165,7 +165,7 @@ def validate(model: Model, loader: DataLoaderIAM, line_mode: bool) -> Tuple[floa
     return char_error_rate, word_accuracy
 
 
-def infer(model: Model, fn_img: Path) -> None:
+def infer(model: Model, fn_img: Path, gradcam: bool = False) -> None:
     """Recognizes text in image provided by file path."""
     img = cv2.imread(fn_img, cv2.IMREAD_GRAYSCALE)
     assert img is not None
@@ -177,6 +177,15 @@ def infer(model: Model, fn_img: Path) -> None:
     recognized, probability = model.infer_batch(batch, True)
     print(f'Recognized: "{recognized[0]}"')
     print(f'Probability: {probability[0]}')
+
+    if gradcam:
+        heatmap = model.compute_gradcam([img], 0)[0]
+        heatmap = cv2.transpose(heatmap)
+        heatmap = heatmap - heatmap.min()
+        heatmap = heatmap / (heatmap.max() + 1e-6)
+        heatmap = (heatmap * 255).astype('uint8')
+        cv2.imwrite('gradcam.png', heatmap)
+        print('GradCAM heatmap saved to gradcam.png')
 
 
 def parse_args() -> argparse.Namespace:
@@ -192,6 +201,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--img_file', help='Image used for inference.', type=Path, default='../data/word.png')
     parser.add_argument('--early_stopping', help='Early stopping epochs.', type=int, default=25)
     parser.add_argument('--dump', help='Dump output of NN to CSV file(s).', action='store_true')
+    parser.add_argument('--gradcam', help='Save GradCAM heatmap for inference image.', action='store_true')
 
     return parser.parse_args()
 
@@ -234,7 +244,7 @@ def main():
     # infer text on test image
     elif args.mode == 'infer':
         model = Model(char_list_from_file(), decoder_type, must_restore=True, dump=args.dump)
-        infer(model, args.img_file)
+        infer(model, args.img_file, gradcam=args.gradcam)
 
 
 if __name__ == '__main__':

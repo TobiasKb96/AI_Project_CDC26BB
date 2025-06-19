@@ -81,6 +81,37 @@ def train(model: Model,
         average_train_loss.append((sum(train_loss_in_epoch)) / len(train_loss_in_epoch))
         write_summary(average_train_loss, summary_char_error_rates, summary_word_accuracies)
 
+        #  plot loss and train data
+        import matplotlib.pyplot as plt
+
+        # plot and save after each epoch
+        def plot_training_progress(losses, cers, accs, path="../model/training_plot.png"):
+            epochs = list(range(1, len(losses) + 1))
+
+            plt.figure(figsize=(12, 4))
+
+            plt.subplot(1, 3, 1)
+            plt.plot(epochs, losses, color='blue')
+            plt.title("CTC Loss")
+            plt.xlabel("Epoch")
+            plt.grid(True)
+
+            plt.subplot(1, 3, 2)
+            plt.plot(epochs, [x * 100 for x in cers], color='red')
+            plt.title("Character Error Rate (%)")
+            plt.xlabel("Epoch")
+            plt.grid(True)
+
+            plt.subplot(1, 3, 3)
+            plt.plot(epochs, [x * 100 for x in accs], color='green')
+            plt.title("Word Accuracy (%)")
+            plt.xlabel("Epoch")
+            plt.grid(True)
+
+            plt.tight_layout()
+            plt.savefig(path)
+            plt.close()
+
         # reset train loss list
         train_loss_in_epoch = []
 
@@ -97,6 +128,7 @@ def train(model: Model,
         # stop training if no more improvement in the last x epochs
         if no_improvement_since >= early_stopping:
             print(f'No more improvement for {early_stopping} epochs. Training stopped.')
+            plot_training_progress(average_train_loss, summary_char_error_rates, summary_word_accuracies)
             break
 
 

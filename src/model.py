@@ -44,6 +44,19 @@ class Model:
         self.setup_rnn()
         self.setup_ctc()
 
+        # GradCAM placeholder and ops
+        self.gradcam_idx = tf.compat.v1.placeholder(tf.int32, name='gradcam_idx')
+        score = tf.reduce_mean(self.ctc_in_3d_tbc[:, :, self.gradcam_idx])
+        grads = tf.gradients(score, self.cnn_out_4d)[0]
+        pooled_grads = tf.reduce_mean(grads, axis=(1, 2))
+        cam = self.cnn_out_4d * tf.reshape(pooled_grads, [-1, 1, 1, tf.shape(self.cnn_out_4d)[-1]])
+        cam = tf.reduce_sum(cam, axis=3)
+        cam = tf.nn.relu(cam)
+        input_size = tf.shape(self.input_imgs)
+        cam = tf.image.resize(cam[..., tf.newaxis], (input_size[1], input_size[2]), method='bilinear')
+        self.gradcam_heatmap = tf.squeeze(cam, axis=-1)
+
+
         # setup optimizer to train NN
         self.batches_trained = 0
         self.update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
@@ -298,32 +311,15 @@ class Model:
 
         return texts, probs
 
-
     def compute_gradcam(self, imgs: List[np.ndarray], target_index: int = 0) -> np.ndarray:
         """Compute GradCAM heatmap for a batch of images."""
 
-        # target score: mean over time steps of selected output channel
-        score = tf.reduce_mean(self.ctc_in_3d_tbc[:, :, target_index])
-
-        # gradient of score with respect to CNN feature maps
-        grads = tf.gradients(score, self.cnn_out_4d)[0]
-
-        # global average pooling of gradients
-        pooled_grads = tf.reduce_mean(grads, axis=(1, 2))
-
-        # weight CNN output with pooled gradients
-        cam = self.cnn_out_4d * tf.reshape(pooled_grads, [-1, 1, 1, tf.shape(self.cnn_out_4d)[-1]])
-        cam = tf.reduce_sum(cam, axis=3)
-
-        # relu and upsample to input size
-        cam = tf.nn.relu(cam)
-        input_size = tf.shape(self.input_imgs)
-        cam = tf.image.resize(cam[..., tf.newaxis], (input_size[1], input_size[2]), method='bilinear')
-        cam = tf.squeeze(cam, axis=-1)
-
         max_text_len = imgs[0].shape[0] // 4
-        feed_dict = {self.input_imgs: imgs, self.seq_len: [max_text_len] * len(imgs), self.is_train: False}
-        return self.sess.run(cam, feed_dict)
+        feed_dict = {self.input_imgs: imgs,
+                     self.seq_len: [max_text_len] * len(imgs),
+                     self.is_train: False,
+                     self.gradcam_idx: target_index}
+        return self.sess.run(self.gradcam_heatmap, feed_dict)
 
     def save(self) -> None:
         """Save model to file."""

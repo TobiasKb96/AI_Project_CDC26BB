@@ -41,6 +41,37 @@ def char_list_from_file() -> List[str]:
         return list(f.read())
 
 
+#  plot loss and train data
+import matplotlib.pyplot as plt
+
+# plot and save after each epoch
+def plot_training_progress(losses, cers, accs, path="../model/training_plot.png"):
+    epochs = list(range(1, len(losses) + 1))
+
+    plt.figure(figsize=(12, 4))
+
+    plt.subplot(1, 3, 1)
+    plt.plot(epochs, losses, color='blue')
+    plt.title("CTC Loss")
+    plt.xlabel("Epoch")
+    plt.grid(True)
+
+    plt.subplot(1, 3, 2)
+    plt.plot(epochs, [x * 100 for x in cers], color='red')
+    plt.title("Character Error Rate (%)")
+    plt.xlabel("Epoch")
+    plt.grid(True)
+
+    plt.subplot(1, 3, 3)
+    plt.plot(epochs, [x * 100 for x in accs], color='green')
+    plt.title("Word Accuracy (%)")
+    plt.xlabel("Epoch")
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(path)
+    plt.close()
+
 def train(model: Model,
           loader: DataLoaderIAM,
           line_mode: bool,
@@ -56,6 +87,7 @@ def train(model: Model,
     preprocessor = Preprocessor(get_img_size(line_mode), data_augmentation=True, line_mode=line_mode)
     best_char_error_rate = float('inf')  # best validation character error rate
     no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
+
     # stop training after this number of epochs without improvement
     while True:
         epoch += 1
@@ -81,36 +113,7 @@ def train(model: Model,
         average_train_loss.append((sum(train_loss_in_epoch)) / len(train_loss_in_epoch))
         write_summary(average_train_loss, summary_char_error_rates, summary_word_accuracies)
 
-        #  plot loss and train data
-        import matplotlib.pyplot as plt
-
-        # plot and save after each epoch
-        def plot_training_progress(losses, cers, accs, path="../model/training_plot.png"):
-            epochs = list(range(1, len(losses) + 1))
-
-            plt.figure(figsize=(12, 4))
-
-            plt.subplot(1, 3, 1)
-            plt.plot(epochs, losses, color='blue')
-            plt.title("CTC Loss")
-            plt.xlabel("Epoch")
-            plt.grid(True)
-
-            plt.subplot(1, 3, 2)
-            plt.plot(epochs, [x * 100 for x in cers], color='red')
-            plt.title("Character Error Rate (%)")
-            plt.xlabel("Epoch")
-            plt.grid(True)
-
-            plt.subplot(1, 3, 3)
-            plt.plot(epochs, [x * 100 for x in accs], color='green')
-            plt.title("Word Accuracy (%)")
-            plt.xlabel("Epoch")
-            plt.grid(True)
-
-            plt.tight_layout()
-            plt.savefig(path)
-            plt.close()
+        plot_training_progress(average_train_loss, summary_char_error_rates, summary_word_accuracies)
 
         # reset train loss list
         train_loss_in_epoch = []
@@ -166,26 +169,44 @@ def validate(model: Model, loader: DataLoaderIAM, line_mode: bool) -> Tuple[floa
 
 
 def infer(model: Model, fn_img: Path, gradcam: bool = False) -> None:
-    """Recognizes text in image provided by file path."""
+    """Recognizes text in image provided by file path, and optionally saves GradCAM and results."""
     img = cv2.imread(fn_img, cv2.IMREAD_GRAYSCALE)
-    assert img is not None
+    assert img is not None, f"Could not read image: {fn_img}"
 
+    # Prepare image
     preprocessor = Preprocessor(get_img_size(), dynamic_width=True, padding=16)
     img = preprocessor.process_img(img)
-
     batch = Batch([img], None, 1)
-    recognized, probability = model.infer_batch(batch, True)
-    print(f'Recognized: "{recognized[0]}"')
-    print(f'Probability: {probability[0]}')
 
+    # Perform inference
+    recognized, probability = model.infer_batch(batch, True)
+    recognized_text = recognized[0]
+    confidence = probability[0]
+    print(f'Recognized: "{recognized_text}"')
+    print(f'Probability: {confidence}')
+
+    # Create output directory
+    output_dir = Path('../model') / fn_img.stem
+    if not output_dir.exists():
+        output_dir.mkdir()
+
+    # Save result to text file
+    result_txt = output_dir / 'result.txt'
+    with open(result_txt, 'w') as f:
+        f.write(f"Recognized: {recognized_text}\n")
+        f.write(f"Probability: {confidence:.4f}\n")
+
+    # Save GradCAM if requested
     if gradcam:
         heatmap = model.compute_gradcam([img], 0)[0]
         heatmap = cv2.transpose(heatmap)
         heatmap = heatmap - heatmap.min()
         heatmap = heatmap / (heatmap.max() + 1e-6)
         heatmap = (heatmap * 255).astype('uint8')
-        cv2.imwrite('gradcam.png', heatmap)
-        print('GradCAM heatmap saved to gradcam.png')
+        gradcam_path = output_dir / 'gradcam.png'
+        cv2.imwrite(str(gradcam_path), heatmap)
+        print(f'GradCAM heatmap saved to {gradcam_path}')
+
 
 
 def parse_args() -> argparse.Namespace:

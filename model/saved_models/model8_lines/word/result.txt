@@ -1,0 +1,2 @@
+Recognized: word
+Probability: 0.9723

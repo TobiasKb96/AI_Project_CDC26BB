@@ -1,0 +1,3 @@
+We used our already pre-trained info and stopped it in order to see if the plot works of the learning curve and were hoping it would add data to the summary.json
+We found out, that the summary.json is rewritten with every new epoch start but it is unclear with what data.
+We had 23 epochs no in final running, but more data inside the summary.json but it was not the mix of both epoch runs.

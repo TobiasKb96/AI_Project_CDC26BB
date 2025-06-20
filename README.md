@@ -83,6 +83,9 @@ Furthermore we used the database LMDB to speed up image loading with the additio
 With `--decoder wordbeamsearch` & `--early_stopping 20` we reached more than 80 epochs for the line model and achieved the following performance:
 
 ![img.png](data/ref_img/training_plot_lines_e109.png)
+and for the word / character model we reached a word accuracy over 70% and a success over 90%  
+![img.png](data/ref_img/training_plot_words_e80.png)
+
 
 For the line model, the tricky part lies also in the word accuracy, which is only correct if every word in the selected batch has been translated correctly. This is why we first started the model only with the default decoder and later on continued the trainging with the decoder wordbeamsearch. We came to the conclusion that this approach is the best regarding performance increasement and a decreased character error rate. 
 

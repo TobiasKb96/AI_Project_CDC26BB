@@ -39,6 +39,9 @@ class Model:
         # input image batch
         self.input_imgs = tf.compat.v1.placeholder(tf.float32, shape=(None, None, None))
 
+        # keep information about CNN layers for summary
+        self.cnn_layers = []
+
         # setup CNN, RNN and CTC
         self.setup_cnn()
         self.setup_rnn()
@@ -76,6 +79,9 @@ class Model:
         stride_vals = pool_vals = [(2, 2), (2, 2), (1, 2), (1, 2), (1, 2)]
         num_layers = len(stride_vals)
 
+        #clear docu for layers
+        self.cnn_layers.clear()
+
         # create layers
         pool = cnn_in4d  # input to first CNN layer
         for i in range(num_layers):
@@ -87,6 +93,13 @@ class Model:
             relu = tf.nn.relu(conv_norm)
             pool = tf.nn.max_pool2d(input=relu, ksize=(1, pool_vals[i][0], pool_vals[i][1], 1),
                                     strides=(1, stride_vals[i][0], stride_vals[i][1], 1), padding='VALID')
+
+            # store configuration for summary
+            self.cnn_layers.append({
+                'conv_kernel': [kernel_vals[i], kernel_vals[i], feature_vals[i], feature_vals[i + 1]],
+                'pool_ksize': pool_vals[i],
+                'pool_stride': stride_vals[i]
+            })
 
         self.cnn_out_4d = pool
 
@@ -325,3 +338,30 @@ class Model:
         """Save model to file."""
         self.snap_ID += 1
         self.saver.save(self.sess, '../model/snapshot', global_step=self.snap_ID)
+
+    def summary(self) -> None:
+        """Print a table of trainable parameters similar to ``keras.Model.summary``."""
+
+        header = f"{'_' * 65}\n{'Layer (type)':<30}{'Output Shape':<25}{'Param #':<10}\n{'=' * 65}"
+        print(header)
+
+        total_params = 0
+        for var in tf.compat.v1.trainable_variables():
+            shape_list = var.get_shape().as_list()
+            param_count = int(np.prod(shape_list))
+            total_params += param_count
+            shape_str = str(tuple(shape_list))
+            line = f"{var.name:<30}{shape_str:<25}{param_count:<10}"
+            print(line)
+
+        print("=" * 65)
+        print(f"Total params: {total_params}")
+
+        # show CNN layer configuration including pooling layers
+        if self.cnn_layers:
+            print('\nCNN architecture:')
+            for idx, info in enumerate(self.cnn_layers, 1):
+                k = info['conv_kernel']
+                ksize = info['pool_ksize']
+                stride = info['pool_stride']
+                print(f'Layer {idx}: conv kernel={k}, pool ksize={ksize}, pool stride={stride}')

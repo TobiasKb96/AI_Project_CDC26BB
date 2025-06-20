@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import json
 from typing import Tuple, List
@@ -75,7 +77,8 @@ def plot_training_progress(losses, cers, accs, path="../model/training_plot.png"
 def train(model: Model,
           loader: DataLoaderIAM,
           line_mode: bool,
-          early_stopping: int = 25) -> None:
+          early_stopping: int = 25,
+          dump_aug_dir: Path | None = None) -> None:
     """Trains NN."""
     epoch = 0  # number of training epochs since start
     summary_char_error_rates = []
@@ -84,7 +87,7 @@ def train(model: Model,
     train_loss_in_epoch = []
     average_train_loss = []
 
-    preprocessor = Preprocessor(get_img_size(line_mode), data_augmentation=True, line_mode=line_mode)
+    preprocessor = Preprocessor(get_img_size(line_mode), data_augmentation=True, line_mode=line_mode, dump_dir=dump_aug_dir)
     best_char_error_rate = float('inf')  # best validation character error rate
     no_improvement_since = 0  # number of epochs no improvement of character error rate occurred
 
@@ -223,6 +226,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--early_stopping', help='Early stopping epochs.', type=int, default=25)
     parser.add_argument('--dump', help='Dump output of NN to CSV file(s).', action='store_true')
     parser.add_argument('--gradcam', help='Save GradCAM heatmap for inference image.', action='store_true')
+    parser.add_argument('--dump_aug_dir', help='Directory to store augmented training images.', type=Path)
 
     return parser.parse_args()
 
@@ -254,7 +258,8 @@ def main():
             f.write(' '.join(loader.train_words + loader.validation_words))
 
         model = Model(char_list, decoder_type)
-        train(model, loader, line_mode=args.line_mode, early_stopping=args.early_stopping)
+        model.summary()
+        train(model, loader, line_mode=args.line_mode, early_stopping=args.early_stopping, dump_aug_dir=args.dump_aug_dir)
 
     # evaluate it on the validation set
     elif args.mode == 'validate':
@@ -265,6 +270,7 @@ def main():
     # infer text on test image
     elif args.mode == 'infer':
         model = Model(char_list_from_file(), decoder_type, must_restore=True, dump=args.dump)
+        model.summary()
         infer(model, args.img_file, gradcam=args.gradcam)
 
 

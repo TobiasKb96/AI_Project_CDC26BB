@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import random
 from typing import Tuple
+from path import Path
 
 import cv2
 import numpy as np
@@ -13,7 +16,8 @@ class Preprocessor:
                  padding: int = 0,
                  dynamic_width: bool = False,
                  data_augmentation: bool = False,
-                 line_mode: bool = False) -> None:
+                 line_mode: bool = False,
+                 dump_dir: str | None = None) -> None:
         # dynamic width only supported when no data augmentation happens
         assert not (dynamic_width and data_augmentation)
         # when padding is on, we need dynamic width enabled
@@ -24,6 +28,10 @@ class Preprocessor:
         self.dynamic_width = dynamic_width
         self.data_augmentation = data_augmentation
         self.line_mode = line_mode
+        self.dump_dir = Path(dump_dir) if dump_dir is not None else None
+        if self.dump_dir:
+            self.dump_dir.mkdir()
+        self._dump_counter = 0
 
     @staticmethod
     def _truncate_label(text: str, max_text_len: int) -> str:
@@ -170,15 +178,26 @@ class Preprocessor:
             batch = self._simulate_text_line(batch)
 
         res_imgs = [self.process_img(img) for img in batch.imgs]
+        if self.dump_dir is not None:
+            self._dump_images(res_imgs)
         max_text_len = res_imgs[0].shape[0] // 4
         res_gt_texts = [self._truncate_label(gt_text, max_text_len) for gt_text in batch.gt_texts]
         return Batch(res_imgs, res_gt_texts, batch.batch_size)
 
+    def _dump_images(self, imgs: list[np.ndarray]) -> None:
+        for img in imgs:
+            out = cv2.transpose(img) + 0.5
+            out = (out * 255).clip(0, 255).astype(np.uint8)
+            file_path = self.dump_dir / f'{self._dump_counter:05d}.png'
+            cv2.imwrite(str(file_path), out)
+            self._dump_counter += 1
 
 def main():
     import matplotlib.pyplot as plt
 
-    img = cv2.imread('../data/test.png', cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('../data/word.png', cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise FileNotFoundError('Could not load sample image "../data/word.png"')
     img_aug = Preprocessor((256, 32), data_augmentation=True).process_img(img)
     plt.subplot(121)
     plt.imshow(img, cmap='gray')

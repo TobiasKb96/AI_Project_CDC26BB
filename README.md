@@ -22,7 +22,7 @@ Pretrained Models and Transfer learning have become essential for achieving high
 
 Overall, modern HTR Systems are shifting from RNN-based sequence models to Transformer-based architectures, improving both recognition accuracy and adaptability to various handwriting styles.
 
-We, however, chose to still use RNN as we didn't want to use a pre-trained model and didn't have the Hardware ressources for larger architectures.
+We, however, chose to still use RNN as we didn't want to use a pre-trained model and didn't have the Hardware resources for larger architectures.
 
 
 ### Methods
@@ -40,7 +40,7 @@ The model and architecture we used is called a CRNN Model.
 For the dataset download the words.tgz & ascii.tgz file from https://fki.tic.heia-fr.ch/
 Move the contents of words.tgz into data/img and the contents of ascii.tgz to data/gt
 
-**CRNN** = Convolutional Recurrent Neural Network spezialized in deep learning architecture and designed to handle tasks like handwriting recognition - CRNN processes entire text lines.
+**CRNN** = Convolutional Recurrent Neural Network specialized in deep learning architecture and designed to handle tasks like handwriting recognition - CRNN processes entire text lines.
 The three main components our the CRNN architecture we used are as following:
 
 **1. CNN:**  
@@ -62,7 +62,7 @@ Pros:
 
 #### Hyperparameters
 
-The training varied in the use of different batch sizes (250, 500, 700 -> GPU memory not efficient) and early stopping after 3 epoches for first test and plots and a good comparision of the learning curve and decreasing character error rate and later on after 25 epochs.
+The training varied in the use of different batch sizes (250, 500, 700 -> GPU memory not efficient) and early stopping after 3 epoches for first test and plots and a good comparison of the learning curve and decreasing character error rate and later on after 25 epochs.
 The images are resized to a height of 32 pixels while the width depends on whether single words or text lines are processed.
 
 
@@ -78,7 +78,7 @@ Word Beam Search has changed the result only for the better, after we used our s
 In order to increase / compare the performance, we used different decoders (default & Word Beam Search). Word Beam Search tends to improve word accuracy when a dictionary is available, 
 while best path decoding is faster but slightly less accurate.
 
-Furthermore we used the database LMDB to speed up image loading with the additional value `--fast` when training the model.
+Furthermore, we used the database LMDB to speed up image loading with the additional value `--fast` when training the model.
 
 With `--decoder wordbeamsearch` & `--early_stopping 20` we reached more than 80 epochs for the line model and achieved the following performance:
 
@@ -87,7 +87,7 @@ and for the word / character model we reached a word accuracy over 70% and a suc
 ![img.png](data/ref_img/training_plot_words_e80.png)
 
 
-For the line model, the tricky part lies also in the word accuracy, which is only correct if every word in the selected batch has been translated correctly. This is why we first started the model only with the default decoder and later on continued the trainging with the decoder wordbeamsearch. We came to the conclusion that this approach is the best regarding performance increasement and a decreased character error rate. 
+For the line model, the tricky part lies also in the word accuracy, which is only correct if every word in the selected batch has been translated correctly. This is why we first started the model only with the default decoder and later on continued the training with the decoder wordbeamsearch. We came to the conclusion that this approach is the best regarding performance increasement and a decreased character error rate. 
 
 #### Discussion
 
@@ -124,7 +124,7 @@ We believe this further helped out for version control.
 We especially differentiated the arguments used for training the data, the batch sizes, including and excluding the CTC decoder Word Beam Search to compare the learning curve and accuracy of the output.
 CNN kernel sizes, number of feature maps and number of layers are given in setup_cnn inside the model.py. The lists kernel_vals, feature_vals, stride_vals and pool_vals define the convolution layers.
 
-In total we have created two trained models:
+In total, we have created two trained models:
 - line model
 - word / character model
 
@@ -136,7 +136,7 @@ python main.py --mode train --fast --data_dir ../data  --batch_size 250 --early_
 Validation runs after every epoch using the same script with `--mode validate`. 
 Character error rate and word accuracy are reported and written to `model/summary.json` for later analysis.
 
-Furhtermore we started with a completely different model build on keras but during the process we figured out, that the model misses crutial parts to be able to translater full lines, yet alone a full page - which was the focus of our motivation for this project
+Furthermore, we started with a completely different model build on keras but during the process we figured out, that the model misses crucial parts to be able to translater full lines, yet alone a full page - which was the focus of our motivation for this project
 
 #### Command line arguments
 * `--mode`: select between "train", "validate" and "infer". Defaults to "infer".
@@ -159,7 +159,7 @@ The model is already using a sort of regularization with this for loop to avoid 
 
 ### Explanation i.e. GradCam (which input pixels were most relevant for the output decision)
 
-We further used GradCam and figured out / ploted the mainly needed portions of images needed in order to understand and translate the png files correctly.
+We further used GradCam and figured out / plotted the mainly needed portions of images needed in order to understand and translate the png files correctly.
 
 ### References
 
